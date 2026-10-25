@@ -3,3 +3,4 @@ uvicorn
 anthropic
 pypdf
 python-multipart
+httpx

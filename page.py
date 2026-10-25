@@ -81,7 +81,7 @@ PAGE = r"""<!doctype html>
 <!-- STEP 2: documents -->
 <div class="card">
   <h2><span class="step">2</span>Add documents</h2>
-  <p class="hint">Typed text, a scanned image (handwriting), or a PDF/TXT file. Personal details are removed before anything is sent to Claude.</p>
+  <p class="hint">Typed text, a scanned image (handwriting), or a PDF/TXT file. Personal details are removed before anything is sent to the AI model.</p>
   <textarea id="newtext" placeholder="Paste one answer / resume here"></textarea>
   <button onclick="addTyped()">Add typed document</button>
   <div style="margin-top:8px">
@@ -127,7 +127,7 @@ PAGE = r"""<!doctype html>
   <button class="secondary" onclick="downloadCSV()">Download results (CSV)</button>
 </div>
 </main>
-<footer id="usage">Claude calls: 0 &middot; tokens in 0 / out 0 &middot; estimated cost $0.0000</footer>
+<footer id="usage">AI calls: 0 &middot; tokens in 0 / out 0 &middot; estimated cost $0.0000</footer>
 
 <script>
 const S = { mode:'exam', docs:[], sample:[], reviewer:{}, learned:null, results:{}, usage:{in:0,out:0,calls:0,cost:0} };
@@ -145,7 +145,7 @@ async function api(path, body, isForm) {
 }
 function addUsage(u, cost) {
   S.usage.in += u.input_tokens||0; S.usage.out += u.output_tokens||0; S.usage.calls += u.calls||1; S.usage.cost += cost;
-  $('usage').innerHTML = `Claude calls: ${S.usage.calls} &middot; tokens in ${S.usage.in.toLocaleString()} / out ${S.usage.out.toLocaleString()} &middot; estimated cost $${S.usage.cost.toFixed(4)}`;
+  $('usage').innerHTML = `AI calls: ${S.usage.calls} &middot; tokens in ${S.usage.in.toLocaleString()} / out ${S.usage.out.toLocaleString()} &middot; estimated cost $${S.usage.cost.toFixed(4)}`;
 }
 
 function setMode(m) {
@@ -287,7 +287,7 @@ async function scoreRest() {
       renderCard(d.id); renderResults();
     }
   }
-  await Promise.all([worker(), worker()]);   // two at a time keeps each request short
+  await Promise.all([worker()]);   // one at a time: stays inside the free-tier rate limit
 }
 function renderCard(id) {
   const d = S.docs.find(x => x.id===id), r = S.results[id];
@@ -324,7 +324,7 @@ function renderResults() {
   const rs = rows(); if (!rs.length) { $('results').innerHTML=''; return; }
   const agentRows = rs.filter(r => r.source==='agent'), done = agentRows.filter(r => r.approved==='yes').length;
   const changed = agentRows.filter(r => r.approved==='yes' && +r.final !== +r.suggested).length;
-  let html = `<p>${done} of ${agentRows.length} agent scores approved &middot; reviewer changed ${changed} of them &middot; Claude cost so far: $${S.usage.cost.toFixed(4)}</p>`;
+  let html = `<p>${done} of ${agentRows.length} agent scores approved &middot; reviewer changed ${changed} of them &middot; AI cost so far (paid-tier price; free tier = $0): $${S.usage.cost.toFixed(4)}</p>`;
   html += '<table><tr><th>ID</th><th>Source</th><th>Agent (3 runs)</th><th>Final</th><th>Approved</th><th>Flags</th></tr>' +
     rs.map(r => `<tr><td>${esc(r.id)}</td><td>${esc(r.source)}</td><td>${esc(r.runs)}</td><td>${esc(r.final)}</td><td>${esc(r.approved)}</td><td>${esc(r.flags)}</td></tr>`).join('') + '</table>';
   if (S.mode==='resume') {
@@ -342,7 +342,7 @@ function downloadCSV() {
 }
 
 fetch('/api/health').then(r => r.json()).then(h => {
-  $('health').textContent = h.key_set ? `Connected to Claude (${h.model})${h.mock?' - MOCK MODE':''}` : 'Claude key is not set on the server yet.';
+  $('health').textContent = h.key_set ? `Connected to ${h.provider} (${h.model})${h.mock?' - MOCK MODE':''}` : 'AI key is not set on the server yet (add GEMINI_API_KEY in Vercel settings).';
 });
 </script>
 </body>

@@ -3,17 +3,18 @@ import io
 import os
 import sys
 
-# make the project folder importable (so `core` can be found on Vercel and locally)
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# make this folder importable on Vercel and locally
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
-from core import agent, demo_data
-from core.llm import MODEL, MOCK, cost_usd
-from core.page import PAGE
-from core.redact import redact
+import agent
+import demo_data
+from llm import MODEL, MOCK, PROVIDER, cost_usd, key_set
+from page import PAGE
+from redact import redact
 
 app = FastAPI(title="Rubric-Based Assessment Agent")
 
@@ -37,7 +38,7 @@ def home():
 
 @app.get("/api/health")
 def health():
-    return {"model": MODEL, "key_set": bool(os.getenv("ANTHROPIC_API_KEY")) or MOCK, "mock": MOCK}
+    return {"provider": PROVIDER, "model": MODEL, "key_set": key_set(), "mock": MOCK}
 
 
 @app.get("/api/demo/{mode}")

@@ -3,7 +3,7 @@ import json
 import random
 import re
 
-from core import prompts
+import prompts
 
 
 def reply(system, content):

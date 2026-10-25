@@ -12,10 +12,11 @@ import asyncio
 import random
 import statistics
 
-from core import prompts
-from core.llm import ask, parse_json, add_usage
+import prompts
+from llm import ask, parse_json, add_usage
 
-RUNS = 3                 # each document is scored 3 times to measure stability
+import os
+RUNS = int(os.getenv("RUNS", "3"))  # each document is scored 3 times to measure stability
 MIN_AGREEMENT = 0.70     # self-test bar: share of held-out samples within tolerance
 
 
