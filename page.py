@@ -97,15 +97,12 @@ PAGE = r"""<!doctype html>
     </svg>
     <div class="hero-text">
       <h1>Rubric-Based Assessment Agent</h1>
-      <div class="tag">Mark fairly. Mark faster. Keep the teacher in charge.</div>
-      <p>An AI assistant that learns how <i>you</i> apply a rubric, then suggests marks and feedback for the rest of the class, while you approve every single mark. Works for exam scripts (typed or handwritten) and for resume screening. Demo uses synthetic data only.</p>
+      <div class="tag" id="t-tag">Mark fairly. Mark faster. Keep the teacher in charge.</div>
+      <p id="t-desc">An AI assistant that learns how <i>you</i> apply a rubric, then suggests marks and feedback for the rest of the class, while you approve every single mark. Works for exam scripts (typed or handwritten) and for resume screening. Demo uses synthetic data only.</p>
     </div>
   </div>
   <div class="how">
-    <div><b>1 &middot; You mark first</b>A random 15% of the papers, with short comments.</div>
-    <div><b>2 &middot; Agent learns</b>It turns your marking into Do's &amp; Don'ts and tests itself.</div>
-    <div><b>3 &middot; Agent suggests</b>Marks each remaining paper 3 times and flags doubts.</div>
-    <div><b>4 &middot; You decide</b>Confirm or override every mark. Overrides are highlighted.</div>
+    <div id="t-how1"></div><div id="t-how2"></div><div id="t-how3"></div><div id="t-how4"></div>
   </div>
 </header>
 <main>
@@ -131,8 +128,8 @@ PAGE = r"""<!doctype html>
 <!-- STEP 1: task + rubric -->
 <div class="card">
   <h2><span class="step">1</span>Task and rubric</h2>
-  <p class="hint">Paste the question paper (or job description) and the rubric, or load the demo set.</p>
-  <div class="learn"><b>Tip from assessment practice:</b> a good rubric names each criterion, the marks for it, and what a full, partial and zero answer looks like. The comment bank below is where you write that down.</div>
+  <p class="hint">Paste the question paper or job description and the rubric, or load the demo set.</p>
+  <div class="learn" id="t-tip1"></div>
   <button class="secondary" onclick="loadDemo()">Load demo data</button>
   <div class="row">
     <div><b id="task-label">Question paper</b><textarea id="task"></textarea></div>
@@ -141,8 +138,9 @@ PAGE = r"""<!doctype html>
   <b>Comment bank</b> <span class="hint">- your standard comments: what earns or loses marks, common mistakes, and feedback you usually write. The agent learns from this and reuses the wording.</span>
   <textarea id="bank" style="min-height:160px" placeholder="C1 - 2 marks: ...&#10;Common mistake: ...&#10;Feedback: ..."></textarea>
   <div style="margin-top:6px">
-    <button class="secondary" onclick="saveSetup()">Save setup to a file</button>
-    <label class="inline">Load setup file: <input type="file" accept=".json" onchange="loadSetup(this.files[0])"></label>
+    <button class="secondary" id="t-save" onclick="saveSetup()">Save setup to a file</button>
+    <label class="inline"><span id="t-load">Load a saved setup:</span> <input type="file" accept=".json" onchange="loadSetup(this.files[0])"></label>
+    <p class="hint" id="t-savehint" style="margin-top:4px"></p>
   </div>
 </div>
 
@@ -150,11 +148,11 @@ PAGE = r"""<!doctype html>
 <div class="card">
   <h2><span class="step">2</span>Add documents</h2>
   <p class="hint">Typed text, a scanned image (handwriting), or a PDF/TXT file. Personal details are removed before anything is sent to the AI model.</p>
-  <textarea id="newtext" placeholder="Paste one answer / resume here"></textarea>
+  <textarea id="newtext" placeholder="Paste one document here"></textarea>
   <button onclick="addTyped()">Add typed document</button>
   <div style="margin-top:8px">
     <label class="inline">Scans: <input type="file" id="imgs" accept="image/*" multiple onchange="uploadImages(this.files)"></label>
-    <label class="inline">Hide top <input type="number" id="maskpct" value="12" min="0" max="40">% of each scan (name/roll no. area)</label>
+    <label class="inline">Hide top <input type="number" id="maskpct" value="12" min="0" max="40">% of each scan (<span id="t-maskarea">name/roll no. area</span>)</label>
   </div>
   <div style="margin-top:6px"><label class="inline">PDF / TXT: <input type="file" id="files" accept=".pdf,.txt" multiple onchange="uploadFiles(this.files)"></label></div>
   <details open><summary id="doccount">Documents</summary><div id="docs"></div></details>
@@ -162,9 +160,9 @@ PAGE = r"""<!doctype html>
 
 <!-- STEP 3: reviewer scores sample -->
 <div class="card">
-  <h2><span class="step">3</span>Reviewer scores a random 15% sample</h2>
+  <h2><span class="step">3</span><span id="t-s3">Reviewer scores a random 15% sample</span></h2>
   <p class="hint">You assess these first. The agent learns how you apply the rubric from your scores and comments.</p>
-  <div class="learn"><b>Like moderation:</b> exam boards ask markers to mark a few "standardisation" scripts first. Write comments that name the criterion and the reason, e.g. <i>"C3 = 0: no link to Grade 3"</i>.</div>
+  <div class="learn" id="t-tip3"></div>
   <button onclick="pickSample()">Pick random sample</button>
   <div id="sample"></div>
   <button id="learnbtn" class="hidden" onclick="learn()">Agent: learn my rules</button>
@@ -186,19 +184,19 @@ PAGE = r"""<!doctype html>
 <div class="card">
   <h2><span class="step">5</span>Review and approve</h2>
   <p class="hint">Every score needs your approval. Flagged items must be opened before they can be approved. There is no "approve all".</p>
-  <div class="learn"><b>To disagree:</b> type your own mark in <i>Final score</i>, give a short reason, and click <i>Override &amp; approve</i>. Overridden papers are highlighted in amber here and in the results.</div>
+  <div class="learn" id="t-tip5"></div>
   <div id="queuestats" class="stats"></div>
   <div id="queue"></div>
 </div>
 
 <!-- STEP 6: results -->
 <div class="card">
-  <h2><span class="step">6</span>Results and cost</h2>
+  <h2><span class="step">6</span>Results</h2>
   <div id="results"></div>
   <button class="secondary" onclick="downloadCSV()">Download results (CSV)</button>
 </div>
 </main>
-<footer id="usage">AI calls: 0 &middot; tokens in 0 / out 0 &middot; estimated cost $0.0000</footer>
+<footer id="usage" style="font-size:12px">Project info (for the DATA722 report): AI calls 0 &middot; tokens in 0 / out 0 &middot; estimated cost $0.0000</footer>
 
 <script>
 const S = { mode:'exam', docs:[], sample:[], reviewer:{}, learned:null, results:{}, usage:{in:0,out:0,calls:0,cost:0} };
@@ -216,7 +214,7 @@ async function api(path, body, isForm) {
 }
 function addUsage(u, cost) {
   S.usage.in += u.input_tokens||0; S.usage.out += u.output_tokens||0; S.usage.calls += u.calls||1; S.usage.cost += cost;
-  $('usage').innerHTML = `AI calls: ${S.usage.calls} &middot; tokens in ${S.usage.in.toLocaleString()} / out ${S.usage.out.toLocaleString()} &middot; estimated cost $${S.usage.cost.toFixed(4)}`;
+  $('usage').innerHTML = `Project info (for the DATA722 report): AI calls ${S.usage.calls} &middot; tokens in ${S.usage.in.toLocaleString()} / out ${S.usage.out.toLocaleString()} &middot; estimated cost $${S.usage.cost.toFixed(4)}`;
 }
 
 function setMode(m) {
@@ -224,7 +222,7 @@ function setMode(m) {
   $('tab-exam').classList.toggle('active', m==='exam'); $('tab-resume').classList.toggle('active', m==='resume');
   $('task-label').textContent = m==='exam' ? 'Question paper' : 'Job description';
   $('task').value = ''; $('rubric').value = ''; $('bank').value = '';
-  restore();
+  restore(); applyText();
   ['sample','learnout','queue','results','queuestats'].forEach(id => $(id).innerHTML='');
   $('rulesbox').classList.add('hidden'); $('learnbtn').classList.add('hidden');
   renderDocs();
@@ -388,7 +386,7 @@ function renderCard(id) {
   $('q-'+id).innerHTML = `<div class="doc ${r.approved ? (r.overridden ? 'overridden' : 'approved') : ''}">${d.image?`<img src="${d.image}" alt="scan">`:''}
     <div class="meta"><b>${esc(id)}</b> ${d.label?`<span class="pill">${esc(d.label)}</span>`:''} ${flagsHTML} ${r.approved && r.overridden ? '<span class="pill amber">overridden</span>' : ''}</div>
     <div>Agent suggests <b>${r.suggested} / ${r.max_total}</b> <span class="hint">(3 separate scoring runs: ${r.runs.join(', ')} - matching numbers mean the agent is confident)</span> &middot; ${esc(r.summary)}</div>
-    ${r.feedback ? `<div class="hint" style="margin-top:4px"><b>Feedback for the student:</b> ${esc(r.feedback)}</div>` : ''}
+    ${r.feedback ? `<div class="hint" style="margin-top:4px"><b>${T().fb}:</b> ${esc(r.feedback)}</div>` : ''}
     <details ${r.opened?'open':''} ontoggle="if(this.open){S.results['${id}'].opened=true; refreshApprove('${id}')}">
       <summary>Open: document, reasons per criterion${flagged?' (required before approval)':''}</summary>
       <pre style="margin:8px 0">${esc(d.text)}</pre><table><tr><th>Criterion</th><th>Score</th><th>Reason and evidence</th></tr>${crit}</table>
@@ -441,17 +439,18 @@ function renderResults() {
   const appr = agentRows.filter(r => r.approved==='yes');
   const exact = appr.filter(r => +r.final === +r.suggested).length, near = appr.filter(r => Math.abs(r.final - r.suggested) <= 1).length;
   let html = appr.length ? `<div class="msg ok"><b>Accuracy on unseen documents (agent vs. your approved mark):</b> exact match ${exact}/${appr.length} (${Math.round(100*exact/appr.length)}%) &middot; within 1 mark ${near}/${appr.length} (${Math.round(100*near/appr.length)}%)</div>` : '';
-  html += `<p>${done} of ${agentRows.length} agent scores approved &middot; reviewer changed ${changed} of them &middot; AI cost so far (paid-tier price; free tier = $0): $${S.usage.cost.toFixed(4)}</p>`;
+  html += `<p>${done} of ${agentRows.length} agent ${T().unit}s approved &middot; reviewer changed ${changed} of them</p>`;
   const ovrRows = rs.filter(r => String(r.action).startsWith('overridden'));
-  if (ovrRows.length) html += `<div class="msg amber"><b>${ovrRows.length} paper(s) where the reviewer disagreed with the agent:</b> ${ovrRows.map(r => esc(r.id)).join(', ')} (highlighted below). <button class="secondary" onclick="overridesToBank()">Add override reasons to my comment bank</button></div>`;
-  html += `<label class="inline" style="margin:6px 0"><input type="checkbox" id="onlyovr" ${S.onlyOvr?'checked':''} onchange="S.onlyOvr=this.checked; renderResults()"> Show only overridden papers</label>`;
+  if (ovrRows.length) html += `<div class="msg amber"><b>${ovrRows.length} ${S.mode==='exam'?'paper(s)':'CV(s)'} where the reviewer disagreed with the agent:</b> ${ovrRows.map(r => esc(r.id)).join(', ')} (highlighted below). <button class="secondary" onclick="overridesToBank()">Add override reasons to my comment bank</button></div>`;
+  html += `<label class="inline" style="margin:6px 0"><input type="checkbox" id="onlyovr" ${S.onlyOvr?'checked':''} onchange="S.onlyOvr=this.checked; renderResults()"> Show only overridden ${S.mode==='exam'?'papers':'CVs'}</label>`;
   const shown = S.onlyOvr ? ovrRows : rs;
   html += '<table><tr><th>ID</th><th>Source</th><th>Agent (3 runs)</th><th>Final</th><th>Reviewer action</th><th>Reason / comment</th><th>Flags</th></tr>' +
     shown.map(r => `<tr class="${String(r.action).startsWith('overridden')?'ovr':''}"><td>${esc(r.id)}</td><td>${esc(r.source)}</td><td>${esc(r.runs)}</td><td><b>${esc(r.final)}</b></td><td>${esc(r.action)}</td><td>${esc(r.reason)}</td><td>${esc(r.flags)}</td></tr>`).join('') + '</table>';
   if (S.mode==='resume') {
     const ranked = rs.filter(r => r.approved.startsWith('yes')).sort((a,b) => b.final - a.final).slice(0,5);
-    html += `<p><b>Approved shortlist (top 5):</b> ${ranked.map(r => esc(r.id)+' ('+r.final+')').join(', ') || 'approve scores first'}</p>`;
+    html += `<p><b>Approved shortlist (top 5 candidates):</b> ${ranked.map(r => esc(r.id)+' ('+r.final+')').join(', ') || 'approve scores first'}</p>`;
   }
+  html += `<details style="margin-top:10px"><summary>Run cost (for project report)</summary><p class="hint" style="margin-top:6px">AI calls ${S.usage.calls} &middot; tokens in ${S.usage.in.toLocaleString()} / out ${S.usage.out.toLocaleString()} &middot; $${S.usage.cost.toFixed(4)} at paid-tier prices (free tier used: $0).</p></details>`;
   $('results').innerHTML = html;
 }
 function downloadCSV() {
@@ -460,6 +459,42 @@ function downloadCSV() {
   const csv = [keys.join(',')].concat(rs.map(r => keys.map(k => '"' + String(r[k] ?? '').replace(/"/g,'""') + '"').join(','))).join('\n');
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
   a.download = `results_${S.mode}.csv`; a.click();
+}
+
+// ---------- wording for each use case ----------
+const TEXT = {
+  exam: {
+    tag: 'Mark fairly. Mark faster. Keep the teacher in charge.',
+    desc: 'An AI assistant that learns how <i>you</i> apply a rubric, then suggests marks and feedback for the rest of the class, while you approve every single mark. Works for typed or handwritten exam scripts. Demo uses synthetic data only.',
+    how: [['1 &middot; You mark first','A random 15% of the papers, with short comments.'],['2 &middot; Agent learns',"It turns your marking into Do's &amp; Don'ts and tests itself."],
+          ['3 &middot; Agent suggests','Marks each remaining paper 3 times and flags doubts.'],['4 &middot; You decide','Confirm or override every mark. Overrides are highlighted.']],
+    tip1: '<b>Tip from assessment practice:</b> a good rubric names each criterion, the marks for it, and what a full, partial and zero answer looks like. The comment bank below is where you write that down.',
+    tip3: '<b>Like moderation:</b> exam boards ask markers to mark a few "standardisation" scripts first. Write comments that name the criterion and the reason, e.g. <i>"C3 = 0: no link to Grade 3"</i>.',
+    tip5: '<b>To disagree:</b> type your own mark in <i>Final score</i>, give a short reason, and click <i>Override &amp; approve</i>. Overridden papers are highlighted in amber here and in the results.',
+    s3: 'Teacher marks a random 15% sample', save: 'Save this paper\'s rubric &amp; comment bank',
+    savehint: 'Saves the question, rubric, comment bank and approved rules to a file, so you can reuse them for the next class or share them with other markers of the same paper.',
+    load: 'Load a saved paper setup:', mask: 'name / roll no. area', fb: 'Feedback for the student', unit: 'mark' },
+  resume: {
+    tag: 'Screen fairly. Screen faster. Keep HR in charge.',
+    desc: 'An AI assistant that learns how <i>you</i> apply the job criteria, then suggests scores and notes for the remaining CVs, while you approve every score and the shortlist. Names, gender, age and contact details are hidden before screening. Demo uses synthetic CVs only.',
+    how: [['1 &middot; You score first','A random 15% of the CVs, with short comments.'],['2 &middot; Agent learns',"It turns your scoring into Do's &amp; Don'ts and tests itself."],
+          ['3 &middot; Agent suggests','Scores each remaining CV 3 times and flags doubts.'],['4 &middot; You decide','Confirm or override every score, then approve the shortlist.']],
+    tip1: '<b>Tip from recruitment practice:</b> score <i>evidence</i>, not keywords. For each criterion, write what strong, partial and no evidence looks like. A career break or a different field (e.g. teaching) is not a weakness if the skills are shown.',
+    tip3: '<b>Like calibration in hiring panels:</b> reviewers score a few CVs together first so everyone uses the criteria the same way. Write comments that name the criterion and the reason, e.g. <i>"R1 = 1: SQL only in coursework"</i>.',
+    tip5: '<b>To disagree:</b> type your own score in <i>Final score</i>, give a short reason, and click <i>Override &amp; approve</i>. Overridden CVs are highlighted in amber here and in the results. The agent never rejects or contacts a candidate.',
+    s3: 'HR reviewer scores a random 15% sample', save: 'Save this job\'s criteria &amp; comment bank',
+    savehint: 'Saves the job description, criteria, comment bank and approved rules to a file, so you can screen the next batch of CVs the same way or share the setup with another recruiter.',
+    load: 'Load a saved job setup:', mask: 'name / photo area', fb: 'Notes for the candidate', unit: 'score' },
+};
+function T() { return TEXT[S.mode]; }
+function applyText() {
+  const t = T();
+  $('t-tag').innerHTML = t.tag; $('t-desc').innerHTML = t.desc;
+  t.how.forEach((h, i) => $('t-how'+(i+1)).innerHTML = `<b>${h[0]}</b>${h[1]}`);
+  $('t-tip1').innerHTML = t.tip1; $('t-tip3').innerHTML = t.tip3; $('t-tip5').innerHTML = t.tip5;
+  $('t-s3').textContent = t.s3; $('t-save').innerHTML = t.save; $('t-savehint').textContent = t.savehint;
+  $('t-load').textContent = t.load; $('t-maskarea').textContent = t.mask;
+  $('newtext').placeholder = S.mode==='exam' ? 'Paste one student answer here' : 'Paste one CV here';
 }
 
 // ---------- comment bank, save / load ----------
@@ -492,7 +527,7 @@ function restore() {
         if (d) { $('task').value = d.task||''; $('rubric').value = d.rubric||''; $('bank').value = d.bank||''; } } catch(e) {}
 }
 ['task','rubric','bank'].forEach(id => $(id).addEventListener('change', autosave));
-restore();
+restore(); applyText();
 
 fetch('/api/health').then(r => r.json()).then(h => {
   $('health').textContent = h.key_set ? `Connected to ${h.provider} (${h.model})${h.mock?' - MOCK MODE':''}` : 'AI key is not set on the server yet (add GEMINI_API_KEY in Vercel settings).';
