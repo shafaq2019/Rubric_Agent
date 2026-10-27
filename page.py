@@ -6,54 +6,107 @@ PAGE = r"""<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rubric-Based Assessment Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Nunito+Sans:wght@400;600;700&family=Caveat:wght@600&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#f6f7f9; --card:#fff; --ink:#1d2330; --muted:#5f6b7a; --line:#dfe3e8;
-          --accent:#2f5bd3; --ok:#1f8a4c; --warn:#b26a00; --bad:#b3261e; --soft:#eef2fb; }
+  :root { --bg:#f7f3ea; --card:#fffdf8; --ink:#1f2a37; --muted:#667085; --line:#e6dfd0;
+          --board:#1f3b34; --board2:#2a4d44; --chalk:#f3efe4;
+          --accent:#0f766e; --accent-soft:#e3f2ef; --ok:#16794a; --warn:#b45309; --bad:#b42318; --soft:#efe9dc;
+          --amber:#d97706; --amber-soft:#fff4e0; }
   * { box-sizing:border-box; }
-  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--ink); line-height:1.45; }
-  header { background:var(--ink); color:#fff; padding:18px 16px; }
-  header h1 { margin:0; font-size:20px; }
-  header p { margin:4px 0 0; color:#c9d1dc; font-size:14px; }
-  main { max-width:980px; margin:0 auto; padding:16px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
-  .card h2 { margin:0 0 4px; font-size:17px; }
-  .step { display:inline-block; background:var(--accent); color:#fff; border-radius:12px; padding:0 9px; font-size:13px; margin-right:6px; }
-  .hint { color:var(--muted); font-size:13px; margin:0 0 12px; }
-  textarea, input[type=text], input[type=number] { width:100%; border:1px solid var(--line); border-radius:6px; padding:8px; font:inherit; font-size:14px; }
+  body { margin:0; font-family:"Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--bg); color:var(--ink); line-height:1.5; font-size:15px; }
+  h1, h2, h3 { font-family:"Fraunces", Georgia, serif; font-weight:700; letter-spacing:-0.01em; }
+
+  /* chalkboard header */
+  header { background: radial-gradient(1200px 300px at 20% -20%, var(--board2), var(--board)); color:var(--chalk); padding:28px 16px 22px; border-bottom:6px solid #8b5e34; }
+  .hero { max-width:1000px; margin:0 auto; display:flex; gap:24px; align-items:center; flex-wrap:wrap; }
+  .hero svg { flex:0 0 auto; width:96px; height:96px; }
+  .hero-text { flex:1 1 420px; }
+  header h1 { margin:0; font-size:30px; line-height:1.15; }
+  header .tag { font-family:"Caveat", cursive; font-size:24px; color:#ffd88a; margin:2px 0 6px; }
+  header p { margin:0; color:#d6e2dc; font-size:15px; max-width:640px; }
+  .how { max-width:1000px; margin:18px auto 0; display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:10px; }
+  .how div { background:rgba(255,255,255,.07); border:1px dashed rgba(243,239,228,.35); border-radius:10px; padding:10px 12px; font-size:14px; color:#e9efe9; }
+  .how b { display:block; font-family:"Fraunces", serif; font-size:16px; color:#fff; }
+
+  main { max-width:1000px; margin:0 auto; padding:20px 16px 40px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:18px; box-shadow:0 1px 0 rgba(31,42,55,.04), 0 6px 18px rgba(31,42,55,.04); }
+  .card h2 { margin:0 0 6px; font-size:21px; display:flex; align-items:center; gap:10px; }
+  .step { display:inline-grid; place-items:center; width:30px; height:30px; background:var(--accent); color:#fff; border-radius:50%; font-family:"Nunito Sans", sans-serif; font-size:15px; font-weight:700; }
+  .hint { color:var(--muted); font-size:14px; margin:0 0 12px; }
+  .learn { background:var(--accent-soft); border-left:4px solid var(--accent); border-radius:8px; padding:10px 14px; margin:0 0 14px; font-size:14px; }
+  .learn b { color:var(--accent); }
+  textarea, input[type=text], input[type=number] { width:100%; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font:inherit; font-size:14px; background:#fff; }
+  textarea:focus, input:focus { outline:2px solid var(--accent-soft); border-color:var(--accent); }
   textarea { min-height:90px; }
   input[type=number] { width:90px; }
-  button { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:8px 14px; font:inherit; font-size:14px; cursor:pointer; margin:4px 6px 4px 0; }
-  button.secondary { background:#fff; color:var(--accent); border:1px solid var(--accent); }
+  button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:9px 16px; font:inherit; font-size:14px; font-weight:700; cursor:pointer; margin:4px 6px 4px 0; transition:transform .05s, filter .15s; }
+  button:hover { filter:brightness(1.08); } button:active { transform:translateY(1px); }
+  button.secondary { background:#fff; color:var(--accent); border:1.5px solid var(--accent); }
+  button.override { background:var(--amber); }
   button:disabled { opacity:.45; cursor:not-allowed; }
-  .tabs button { background:#fff; color:var(--ink); border:1px solid var(--line); }
-  .tabs button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
-  .row { display:flex; gap:12px; flex-wrap:wrap; }
+  .tabs button { background:#fff; color:var(--ink); border:1.5px solid var(--line); }
+  .tabs button.active { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .row { display:flex; gap:14px; flex-wrap:wrap; }
   .row > div { flex:1 1 300px; }
-  .doc { border:1px solid var(--line); border-radius:8px; padding:10px; margin:8px 0; background:#fff; }
-  .doc .meta { font-size:12px; color:var(--muted); margin-bottom:4px; }
+  .doc { border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin:10px 0; background:#fff; }
+  .doc .meta { font-size:13px; color:var(--muted); margin-bottom:6px; }
   .doc pre { white-space:pre-wrap; margin:0; font:inherit; font-size:14px; }
-  .doc img { max-width:220px; border:1px solid var(--line); border-radius:4px; float:right; margin-left:10px; }
-  .pill { display:inline-block; font-size:12px; border-radius:10px; padding:1px 8px; margin-right:4px; background:var(--soft); }
+  .doc img { max-width:220px; border:1px solid var(--line); border-radius:6px; float:right; margin-left:10px; }
+  .pill { display:inline-block; font-size:12px; font-weight:600; border-radius:999px; padding:2px 9px; margin-right:4px; background:var(--soft); }
   .pill.warn { background:#fff1dc; color:var(--warn); }
-  .pill.ok { background:#e4f4ea; color:var(--ok); }
+  .pill.ok { background:#e3f4ea; color:var(--ok); }
   .pill.bad { background:#fde7e5; color:var(--bad); }
-  .msg { padding:10px; border-radius:6px; margin:8px 0; font-size:14px; }
-  .msg.ok { background:#e4f4ea; } .msg.warn { background:#fff1dc; } .msg.bad { background:#fde7e5; }
+  .pill.amber { background:var(--amber-soft); color:var(--amber); border:1px solid #f5c77e; }
+  .msg { padding:11px 14px; border-radius:8px; margin:8px 0; font-size:14px; }
+  .msg.ok { background:#e3f4ea; } .msg.warn { background:#fff1dc; } .msg.bad { background:#fde7e5; }
+  .msg.amber { background:var(--amber-soft); border-left:4px solid var(--amber); }
   table { border-collapse:collapse; width:100%; font-size:14px; }
-  th, td { border-bottom:1px solid var(--line); padding:6px; text-align:left; vertical-align:top; }
-  details summary { cursor:pointer; color:var(--accent); font-size:14px; margin-top:6px; }
-  .approved { border-color:var(--ok); background:#f3fbf6; }
+  th { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  th, td { border-bottom:1px solid var(--line); padding:8px 6px; text-align:left; vertical-align:top; }
+  tr.ovr td { background:var(--amber-soft); }
+  details summary { cursor:pointer; color:var(--accent); font-size:14px; font-weight:600; margin-top:8px; }
+  .approved { border-color:#9fd3b5; background:#f4fbf7; }
+  .overridden { border:2px solid var(--amber); background:#fffaf0; }
   .hidden { display:none; }
-  footer { position:sticky; bottom:0; background:#fff; border-top:1px solid var(--line); padding:8px 16px; font-size:13px; color:var(--muted); }
+  .stats { display:flex; gap:10px; flex-wrap:wrap; margin:0 0 10px; }
+  .stat { background:#fff; border:1px solid var(--line); border-radius:10px; padding:8px 14px; font-size:13px; color:var(--muted); }
+  .stat b { display:block; font-size:20px; color:var(--ink); font-family:"Fraunces", serif; }
+  .stat.amber b { color:var(--amber); }
+  footer { position:sticky; bottom:0; background:rgba(255,253,248,.96); backdrop-filter:blur(4px); border-top:1px solid var(--line); padding:8px 16px; font-size:13px; color:var(--muted); }
   label.inline { font-size:14px; display:inline-flex; align-items:center; gap:6px; }
   .spinner { display:inline-block; width:12px; height:12px; border:2px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; vertical-align:middle; }
   @keyframes spin { to { transform:rotate(360deg); } }
+  .about { font-size:14px; }
+  .about ul { margin:6px 0 0 18px; padding:0; }
+  @media (max-width:600px) { header h1 { font-size:24px; } .hero svg { width:64px; height:64px; } }
 </style>
 </head>
 <body>
 <header>
-  <h1>Rubric-Based Assessment Agent</h1>
-  <p>The reviewer scores a sample first &rarr; the agent learns her rules &rarr; the agent scores the rest &rarr; the reviewer approves every result. Demo uses synthetic data only.</p>
+  <div class="hero">
+    <svg viewBox="0 0 96 96" aria-hidden="true">
+      <rect x="6" y="20" width="40" height="56" rx="4" fill="#f3efe4"/>
+      <rect x="50" y="20" width="40" height="56" rx="4" fill="#e9e2d0"/>
+      <path d="M46 22 v54 M50 22 v54" stroke="#8b5e34" stroke-width="3"/>
+      <g stroke="#9aa6a0" stroke-width="2"><path d="M13 34h26M13 42h26M13 50h20M57 34h26M57 42h26M57 50h18"/></g>
+      <circle cx="70" cy="64" r="13" fill="#0f766e"/>
+      <path d="M63 64l5 5 9-10" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M16 70 L34 52 l5 5 -18 18 -7 2z" fill="#ffd88a" stroke="#8b5e34" stroke-width="1.5"/>
+    </svg>
+    <div class="hero-text">
+      <h1>Rubric-Based Assessment Agent</h1>
+      <div class="tag">Mark fairly. Mark faster. Keep the teacher in charge.</div>
+      <p>An AI assistant that learns how <i>you</i> apply a rubric, then suggests marks and feedback for the rest of the class, while you approve every single mark. Works for exam scripts (typed or handwritten) and for resume screening. Demo uses synthetic data only.</p>
+    </div>
+  </div>
+  <div class="how">
+    <div><b>1 &middot; You mark first</b>A random 15% of the papers, with short comments.</div>
+    <div><b>2 &middot; Agent learns</b>It turns your marking into Do's &amp; Don'ts and tests itself.</div>
+    <div><b>3 &middot; Agent suggests</b>Marks each remaining paper 3 times and flags doubts.</div>
+    <div><b>4 &middot; You decide</b>Confirm or override every mark. Overrides are highlighted.</div>
+  </div>
 </header>
 <main>
 
@@ -65,12 +118,21 @@ PAGE = r"""<!doctype html>
     <button id="tab-resume" onclick="setMode('resume')">Resume screening</button>
   </div>
   <p class="hint" id="health"></p>
+  <details class="about"><summary>Why rubric-based marking with a human in the loop?</summary>
+    <ul>
+      <li><b>Consistency (inter-rater reliability):</b> two examiners often give different marks to the same answer. A shared rubric and comment bank make marking more uniform across sections.</li>
+      <li><b>Assessment for learning:</b> specific, criterion-linked feedback helps students improve more than a bare number.</li>
+      <li><b>Teacher time:</b> the agent does the first pass; the teacher reviews instead of marking from scratch.</li>
+      <li><b>Accountability:</b> AI only suggests. Every final mark is confirmed by a teacher, and every override is recorded.</li>
+    </ul>
+  </details>
 </div>
 
 <!-- STEP 1: task + rubric -->
 <div class="card">
   <h2><span class="step">1</span>Task and rubric</h2>
   <p class="hint">Paste the question paper (or job description) and the rubric, or load the demo set.</p>
+  <div class="learn"><b>Tip from assessment practice:</b> a good rubric names each criterion, the marks for it, and what a full, partial and zero answer looks like. The comment bank below is where you write that down.</div>
   <button class="secondary" onclick="loadDemo()">Load demo data</button>
   <div class="row">
     <div><b id="task-label">Question paper</b><textarea id="task"></textarea></div>
@@ -102,6 +164,7 @@ PAGE = r"""<!doctype html>
 <div class="card">
   <h2><span class="step">3</span>Reviewer scores a random 15% sample</h2>
   <p class="hint">You assess these first. The agent learns how you apply the rubric from your scores and comments.</p>
+  <div class="learn"><b>Like moderation:</b> exam boards ask markers to mark a few "standardisation" scripts first. Write comments that name the criterion and the reason, e.g. <i>"C3 = 0: no link to Grade 3"</i>.</div>
   <button onclick="pickSample()">Pick random sample</button>
   <div id="sample"></div>
   <button id="learnbtn" class="hidden" onclick="learn()">Agent: learn my rules</button>
@@ -123,6 +186,8 @@ PAGE = r"""<!doctype html>
 <div class="card">
   <h2><span class="step">5</span>Review and approve</h2>
   <p class="hint">Every score needs your approval. Flagged items must be opened before they can be approved. There is no "approve all".</p>
+  <div class="learn"><b>To disagree:</b> type your own mark in <i>Final score</i>, give a short reason, and click <i>Override &amp; approve</i>. Overridden papers are highlighted in amber here and in the results.</div>
+  <div id="queuestats" class="stats"></div>
   <div id="queue"></div>
 </div>
 
@@ -160,7 +225,7 @@ function setMode(m) {
   $('task-label').textContent = m==='exam' ? 'Question paper' : 'Job description';
   $('task').value = ''; $('rubric').value = ''; $('bank').value = '';
   restore();
-  ['sample','learnout','queue','results'].forEach(id => $(id).innerHTML='');
+  ['sample','learnout','queue','results','queuestats'].forEach(id => $(id).innerHTML='');
   $('rulesbox').classList.add('hidden'); $('learnbtn').classList.add('hidden');
   renderDocs();
 }
@@ -311,34 +376,62 @@ async function retry(id) {
 }
 function renderCard(id) {
   const d = S.docs.find(x => x.id===id), r = S.results[id];
-  if (r.error) { $('q-'+id).innerHTML = docHTML(d, `<div class="msg bad">${esc(r.error)}</div><button onclick="retry('${id}')">Retry</button>`); return; }
+  if (r.error) { $('q-'+id).innerHTML = docHTML(d, `<div class="msg bad">${esc(r.error)}</div><button onclick="retry('${id}')">Retry</button>`); renderStats(); return; }
   const flagged = r.flags.length > 0;
   const crit = r.criteria.map(c => `<tr><td>${esc(c.criterion)}</td><td>${c.score}/${c.max}</td><td>${esc(c.reason)}<br><i>"${esc(c.evidence)}"</i></td></tr>`).join('');
   const flagsHTML = flagged ? r.flags.map(f => `<span class="pill warn">${esc(f)}</span>`).join('') : '<span class="pill ok">stable across 3 runs</span>';
   const canApprove = !flagged || r.opened;
-  $('q-'+id).innerHTML = `<div class="doc ${r.approved?'approved':''}">${d.image?`<img src="${d.image}" alt="scan">`:''}
-    <div class="meta"><b>${esc(id)}</b> ${d.label?`<span class="pill">${esc(d.label)}</span>`:''} ${flagsHTML}</div>
-    <div>Agent suggests <b>${r.suggested} / ${r.max_total}</b> <span class="hint">(3 separate scoring runs of the whole answer: ${r.runs.join(', ')} - same numbers = stable)</span> &middot; ${esc(r.summary)}</div>
+  const differs = +r.final !== +r.suggested;
+  let status = '';
+  if (r.approved && r.overridden) status = `<div class="msg amber"><b>Reviewer override:</b> agent ${r.suggested} &rarr; reviewer ${r.final}${r.reason?` &middot; Reason: ${esc(r.reason)}`:''}</div>`;
+  else if (r.approved) status = `<div class="msg ok"><b>Approved:</b> agent mark confirmed by reviewer.</div>`;
+  $('q-'+id).innerHTML = `<div class="doc ${r.approved ? (r.overridden ? 'overridden' : 'approved') : ''}">${d.image?`<img src="${d.image}" alt="scan">`:''}
+    <div class="meta"><b>${esc(id)}</b> ${d.label?`<span class="pill">${esc(d.label)}</span>`:''} ${flagsHTML} ${r.approved && r.overridden ? '<span class="pill amber">overridden</span>' : ''}</div>
+    <div>Agent suggests <b>${r.suggested} / ${r.max_total}</b> <span class="hint">(3 separate scoring runs: ${r.runs.join(', ')} - matching numbers mean the agent is confident)</span> &middot; ${esc(r.summary)}</div>
     ${r.feedback ? `<div class="hint" style="margin-top:4px"><b>Feedback for the student:</b> ${esc(r.feedback)}</div>` : ''}
     <details ${r.opened?'open':''} ontoggle="if(this.open){S.results['${id}'].opened=true; refreshApprove('${id}')}">
       <summary>Open: document, reasons per criterion${flagged?' (required before approval)':''}</summary>
       <pre style="margin:8px 0">${esc(d.text)}</pre><table><tr><th>Criterion</th><th>Score</th><th>Reason and evidence</th></tr>${crit}</table>
     </details>
-    <div style="margin-top:8px">Final score <input type="number" step="0.5" id="fs-${id}" value="${r.final}" onchange="S.results['${id}'].final=+this.value; renderResults()" ${r.approved?'disabled':''}>
-      <button id="ap-${id}" ${canApprove&&!r.approved?'':'disabled'} onclick="approve('${id}')">${r.approved?'Approved':'Approve'}</button>
-      ${r.approved?`<button class="secondary" onclick="S.results['${id}'].approved=false; renderCard('${id}'); renderResults()">Undo</button>`:''}</div>
+    ${status}
+    ${r.approved ? `<button class="secondary" onclick="undo('${id}')">Undo</button>` : `
+    <div style="margin-top:10px">Final score <input type="number" step="0.5" id="fs-${id}" value="${r.final}" oninput="onFinal('${id}', this.value)">
+      <button id="ap-${id}" class="${differs?'override':''}" ${canApprove?'':'disabled'} onclick="approve('${id}')">${differs?'Override &amp; approve':'Approve'}</button></div>
+    <div id="rbox-${id}" class="${differs?'':'hidden'}" style="margin-top:6px"><input type="text" id="rr-${id}" placeholder="Reason for your change (e.g. C3 = 0: no link to Grade 3)" value="${esc(r.reason||'')}" oninput="S.results['${id}'].reason=this.value"></div>`}
     <div style="clear:both"></div></div>`;
+  renderStats();
+}
+function onFinal(id, v) {
+  const r = S.results[id]; r.final = v === '' ? r.suggested : +v;
+  const differs = +r.final !== +r.suggested, b = $('ap-'+id);
+  b.textContent = differs ? 'Override & approve' : 'Approve'; b.className = differs ? 'override' : '';
+  $('rbox-'+id).classList.toggle('hidden', !differs);
+  renderResults();
 }
 function refreshApprove(id) { const b = $('ap-'+id); if (b && !S.results[id].approved) b.disabled = false; }
-function approve(id) { const r = S.results[id]; r.final = +$('fs-'+id).value; r.approved = true; renderCard(id); renderResults(); }
+function approve(id) {
+  const r = S.results[id]; r.final = +$('fs-'+id).value;
+  r.overridden = +r.final !== +r.suggested;
+  r.reason = r.overridden ? ($('rr-'+id).value || '').trim() : '';
+  if (r.overridden && !r.reason && !confirm('Approve this override without a reason? A reason helps the agent learn.')) return;
+  r.approved = true; renderCard(id); renderResults();
+}
+function undo(id) { const r = S.results[id]; r.approved = false; renderCard(id); renderResults(); }
+function renderStats() {
+  const vals = Object.values(S.results).filter(r => !r.error);
+  if (!vals.length) { $('queuestats').innerHTML=''; return; }
+  const appr = vals.filter(r => r.approved).length, ovr = vals.filter(r => r.approved && r.overridden).length, fl = vals.filter(r => r.flags.length).length;
+  $('queuestats').innerHTML = `<div class="stat"><b>${appr}/${vals.length}</b>approved</div><div class="stat amber"><b>${ovr}</b>overridden by reviewer</div><div class="stat"><b>${fl}</b>flagged by agent</div>`;
+}
 
 // ---------- step 6 ----------
 function rows() {
   const out = [];
-  for (const id of S.sample) out.push({ id, source:'reviewer sample', reviewer:S.reviewer[id]?.score, runs:'', suggested:'', final:S.reviewer[id]?.score, flags:'', approved:'yes (reviewer)' });
+  for (const id of S.sample) out.push({ id, source:'reviewer sample', reviewer:S.reviewer[id]?.score, runs:'', suggested:'', final:S.reviewer[id]?.score, flags:'', approved:'yes (reviewer)', action:'marked by reviewer', reason:S.reviewer[id]?.comment||'', feedback:'' });
   for (const d of S.docs) { const r = S.results[d.id]; if (!r || r.error) continue;
-    out.push({ id:d.id, source:'agent', reviewer:'', runs:r.runs.join('|'), suggested:r.suggested, final:r.final, flags:r.flags.join('; '), approved:r.approved?'yes':'no', feedback:r.feedback||'' }); }
-  for (const d of S.docs) if (d.route==='send_to_reviewer') out.push({ id:d.id, source:'unreadable - mark by hand', reviewer:'', runs:'', suggested:'', final:'', flags:'unreadable', approved:'no' });
+    out.push({ id:d.id, source:'agent', reviewer:'', runs:r.runs.join('|'), suggested:r.suggested, final:r.final, flags:r.flags.join('; '), approved:r.approved?'yes':'no',
+      action: !r.approved ? 'pending' : (r.overridden ? `overridden (${r.suggested} -> ${r.final})` : 'confirmed'), reason:r.reason||'', feedback:r.feedback||'' }); }
+  for (const d of S.docs) if (d.route==='send_to_reviewer') out.push({ id:d.id, source:'unreadable - mark by hand', reviewer:'', runs:'', suggested:'', final:'', flags:'unreadable', approved:'no', action:'pending', reason:'', feedback:'' });
   return out;
 }
 function renderResults() {
@@ -349,8 +442,12 @@ function renderResults() {
   const exact = appr.filter(r => +r.final === +r.suggested).length, near = appr.filter(r => Math.abs(r.final - r.suggested) <= 1).length;
   let html = appr.length ? `<div class="msg ok"><b>Accuracy on unseen documents (agent vs. your approved mark):</b> exact match ${exact}/${appr.length} (${Math.round(100*exact/appr.length)}%) &middot; within 1 mark ${near}/${appr.length} (${Math.round(100*near/appr.length)}%)</div>` : '';
   html += `<p>${done} of ${agentRows.length} agent scores approved &middot; reviewer changed ${changed} of them &middot; AI cost so far (paid-tier price; free tier = $0): $${S.usage.cost.toFixed(4)}</p>`;
-  html += '<table><tr><th>ID</th><th>Source</th><th>Agent (3 runs)</th><th>Final</th><th>Approved</th><th>Flags</th></tr>' +
-    rs.map(r => `<tr><td>${esc(r.id)}</td><td>${esc(r.source)}</td><td>${esc(r.runs)}</td><td>${esc(r.final)}</td><td>${esc(r.approved)}</td><td>${esc(r.flags)}</td></tr>`).join('') + '</table>';
+  const ovrRows = rs.filter(r => String(r.action).startsWith('overridden'));
+  if (ovrRows.length) html += `<div class="msg amber"><b>${ovrRows.length} paper(s) where the reviewer disagreed with the agent:</b> ${ovrRows.map(r => esc(r.id)).join(', ')} (highlighted below). <button class="secondary" onclick="overridesToBank()">Add override reasons to my comment bank</button></div>`;
+  html += `<label class="inline" style="margin:6px 0"><input type="checkbox" id="onlyovr" ${S.onlyOvr?'checked':''} onchange="S.onlyOvr=this.checked; renderResults()"> Show only overridden papers</label>`;
+  const shown = S.onlyOvr ? ovrRows : rs;
+  html += '<table><tr><th>ID</th><th>Source</th><th>Agent (3 runs)</th><th>Final</th><th>Reviewer action</th><th>Reason / comment</th><th>Flags</th></tr>' +
+    shown.map(r => `<tr class="${String(r.action).startsWith('overridden')?'ovr':''}"><td>${esc(r.id)}</td><td>${esc(r.source)}</td><td>${esc(r.runs)}</td><td><b>${esc(r.final)}</b></td><td>${esc(r.action)}</td><td>${esc(r.reason)}</td><td>${esc(r.flags)}</td></tr>`).join('') + '</table>';
   if (S.mode==='resume') {
     const ranked = rs.filter(r => r.approved.startsWith('yes')).sort((a,b) => b.final - a.final).slice(0,5);
     html += `<p><b>Approved shortlist (top 5):</b> ${ranked.map(r => esc(r.id)+' ('+r.final+')').join(', ') || 'approve scores first'}</p>`;
@@ -366,6 +463,12 @@ function downloadCSV() {
 }
 
 // ---------- comment bank, save / load ----------
+function overridesToBank() {
+  const lines = rows().filter(r => String(r.action).startsWith('overridden') && r.reason).map(r => `- ${r.id}: ${r.reason}`);
+  if (!lines.length) { alert('No override reasons to add yet.'); return; }
+  const b = $('bank'); b.value = (b.value.trim() + '\n\nLessons from my overrides:\n' + lines.join('\n')).trim(); autosave();
+  alert('Added ' + lines.length + ' override reason(s) to the comment bank (Step 1).');
+}
 function addRulesToBank() {
   const b = $('bank'); b.value = (b.value.trim() + '\n\nLearned from my sample (approved):\n' + $('rules').value).trim(); autosave();
 }
