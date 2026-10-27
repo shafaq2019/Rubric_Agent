@@ -48,7 +48,7 @@ def demo(mode: str):
     for d in data["documents"]:
         clean, n = redact(d["text"])
         docs.append({"id": d["id"], "label": d["label"], "text": clean, "redacted": n, "source": "typed"})
-    return {"task": data["task"], "rubric": data["rubric"], "documents": docs}
+    return {"task": data["task"], "rubric": data["rubric"], "bank": data.get("bank", ""), "documents": docs}
 
 
 # ---------- documents in ----------
@@ -103,12 +103,13 @@ class LearnIn(BaseModel):
     task: str
     rubric: str
     examples: list[Example]
+    bank: str = ""
 
 
 @app.post("/api/learn")
 async def learn(body: LearnIn):
     examples = [{**e.model_dump(), "text": redact(e.text)[0]} for e in body.examples]
-    return with_cost(await agent.learn_rules(body.mode, body.task, body.rubric, examples))
+    return with_cost(await agent.learn_rules(body.mode, body.task, body.rubric, examples, bank=body.bank))
 
 
 class ScoreIn(BaseModel):
@@ -118,9 +119,10 @@ class ScoreIn(BaseModel):
     rules: str = ""
     text: str
     legibility: str = "clear"
+    bank: str = ""
 
 
 @app.post("/api/score")
 async def score(body: ScoreIn):
     text = redact(body.text)[0]
-    return with_cost(await agent.score_document(body.mode, body.task, body.rubric, body.rules, text, body.legibility))
+    return with_cost(await agent.score_document(body.mode, body.task, body.rubric, body.rules, text, body.legibility, body.bank))

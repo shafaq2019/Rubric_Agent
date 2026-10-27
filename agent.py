@@ -20,6 +20,21 @@ RUNS = int(os.getenv("RUNS", "3"))  # each document is scored 3 times to measure
 MIN_AGREEMENT = 0.70     # self-test bar: share of held-out samples within tolerance
 
 
+async def ask_json(system, content, max_tokens):
+    """Ask the model and read its JSON. If the JSON is broken, ask once more.
+    (Fix for a real failure found in testing: Gemini sometimes returned invalid JSON.)"""
+    usage = {}
+    for attempt in range(2):
+        text, u = await ask(system, content, max_tokens=max_tokens)
+        add_usage(usage, u)
+        try:
+            return parse_json(text), usage
+        except ValueError:
+            if attempt == 1:
+                raise ValueError("The AI returned an unreadable reply twice. Click Retry.")
+    raise ValueError("unreachable")
+
+
 def tolerance(max_total: float) -> float:
     """How far apart two scores can be and still 'agree': 1 mark, or 10% of the total if larger."""
     return max(1.0, 0.1 * (max_total or 0))
@@ -31,8 +46,7 @@ async def transcribe(image_b64: str, media_type: str) -> dict:
         {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": image_b64}},
         {"type": "text", "text": "Transcribe this document."},
     ]
-    text, usage = await ask(prompts.TRANSCRIBE, content, max_tokens=2000)
-    data = parse_json(text)
+    data, usage = await ask_json(prompts.TRANSCRIBE, content, 2000)
     legibility = data.get("legibility", "clear")
     # Agent decision: unreadable sheets are NOT scored; they go straight to the reviewer.
     route = "send_to_reviewer" if legibility == "unreadable" else "proceed"
@@ -41,19 +55,19 @@ async def transcribe(image_b64: str, media_type: str) -> dict:
 
 
 # ---------- scoring ----------
-async def score_once(mode, task, rubric, rules, document) -> tuple[dict, dict]:
-    msg = prompts.score_user_message(mode, task, rubric, rules, document)
-    text, usage = await ask(prompts.SCORE, msg, max_tokens=1500)
-    return parse_json(text), usage
+async def score_once(mode, task, rubric, rules, document, bank="") -> tuple[dict, dict]:
+    msg = prompts.score_user_message(mode, task, rubric, rules, document, bank)
+    return await ask_json(prompts.SCORE, msg, 1800)
 
 
-async def score_document(mode, task, rubric, rules, document, legibility="clear") -> dict:
+async def score_document(mode, task, rubric, rules, document, legibility="clear", bank="") -> dict:
     """Scores one document RUNS times in parallel, then decides how to route it."""
-    results = await asyncio.gather(*[score_once(mode, task, rubric, rules, document) for _ in range(RUNS)])
+    results = await asyncio.gather(*[score_once(mode, task, rubric, rules, document, bank) for _ in range(RUNS)])
     usage = {}
     runs = []
     for data, u in results:
-        add_usage(usage, u)
+        for k in ("input_tokens", "output_tokens", "calls"):
+            usage[k] = usage.get(k, 0) + u.get(k, 0)
         runs.append(data)
     totals = [float(r.get("total", 0)) for r in runs]
     max_total = float(runs[0].get("max_total", 0) or 0)
@@ -70,6 +84,7 @@ async def score_document(mode, task, rubric, rules, document, legibility="clear"
     route = "full_review" if flags else "normal_review"
     return {"suggested": suggested, "runs": totals, "max_total": max_total, "spread": spread,
             "criteria": best.get("criteria", []), "summary": best.get("summary", ""),
+            "feedback": best.get("feedback", ""),
             "flags": flags, "route": route, "usage": usage}
 
 
@@ -80,12 +95,16 @@ def _rules_text(data: dict) -> str:
     return (dos + "\n" + donts).strip()
 
 
-async def _draft_rules(mode, task, rubric, examples) -> tuple[dict, dict]:
-    text, usage = await ask(prompts.LEARN, prompts.learn_user_message(mode, task, rubric, examples), max_tokens=1200)
-    return parse_json(text), usage
+async def _draft_rules(mode, task, rubric, examples, bank="") -> tuple[dict, dict]:
+    return await ask_json(prompts.LEARN, prompts.learn_user_message(mode, task, rubric, examples, bank), 1200)
 
 
-async def learn_rules(mode, task, rubric, examples, seed: int = 7) -> dict:
+def _merge(total, u):
+    for k in ("input_tokens", "output_tokens", "calls"):
+        total[k] = total.get(k, 0) + u.get(k, 0)
+
+
+async def learn_rules(mode, task, rubric, examples, seed: int = 7, bank: str = "") -> dict:
     """examples: [{"id", "text", "score", "comment"}] scored by the reviewer.
 
     Self-test: learn from about 2/3 of the examples, score the held-out 1/3 with those rules,
@@ -98,13 +117,13 @@ async def learn_rules(mode, task, rubric, examples, seed: int = 7) -> dict:
         random.Random(seed).shuffle(shuffled)
         n_hold = max(1, len(shuffled) // 3)
         held, train = shuffled[:n_hold], shuffled[n_hold:]
-        draft, u = await _draft_rules(mode, task, rubric, train)
-        add_usage(usage, u)
+        draft, u = await _draft_rules(mode, task, rubric, train, bank)
+        _merge(usage, u)
         draft_rules = _rules_text(draft)
-        scored = await asyncio.gather(*[score_once(mode, task, rubric, draft_rules, ex["text"]) for ex in held])
+        scored = await asyncio.gather(*[score_once(mode, task, rubric, draft_rules, ex["text"], bank) for ex in held])
         rows = []
         for ex, (data, u2) in zip(held, scored):
-            add_usage(usage, u2)
+            _merge(usage, u2)
             ai = float(data.get("total", 0))
             tol = tolerance(float(data.get("max_total", 0) or 0))
             rows.append({"id": ex.get("id"), "reviewer": float(ex["score"]), "agent": ai,
@@ -112,8 +131,8 @@ async def learn_rules(mode, task, rubric, examples, seed: int = 7) -> dict:
         agreement = sum(r["agree"] for r in rows) / len(rows)
         self_test = {"held_out": rows, "agreement": agreement}
 
-    final, u = await _draft_rules(mode, task, rubric, examples)
-    add_usage(usage, u)
+    final, u = await _draft_rules(mode, task, rubric, examples, bank)
+    _merge(usage, u)
 
     # Agent decision: continue, or ask for more reviewer examples first.
     if self_test is None:

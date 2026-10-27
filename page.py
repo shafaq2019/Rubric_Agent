@@ -76,6 +76,12 @@ PAGE = r"""<!doctype html>
     <div><b id="task-label">Question paper</b><textarea id="task"></textarea></div>
     <div><b>Rubric</b><textarea id="rubric"></textarea></div>
   </div>
+  <b>Comment bank</b> <span class="hint">- your standard comments: what earns or loses marks, common mistakes, and feedback you usually write. The agent learns from this and reuses the wording.</span>
+  <textarea id="bank" style="min-height:160px" placeholder="C1 - 2 marks: ...&#10;Common mistake: ...&#10;Feedback: ..."></textarea>
+  <div style="margin-top:6px">
+    <button class="secondary" onclick="saveSetup()">Save setup to a file</button>
+    <label class="inline">Load setup file: <input type="file" accept=".json" onchange="loadSetup(this.files[0])"></label>
+  </div>
 </div>
 
 <!-- STEP 2: documents -->
@@ -152,7 +158,8 @@ function setMode(m) {
   S.mode = m; S.docs = []; S.sample = []; S.reviewer = {}; S.learned = null; S.results = {};
   $('tab-exam').classList.toggle('active', m==='exam'); $('tab-resume').classList.toggle('active', m==='resume');
   $('task-label').textContent = m==='exam' ? 'Question paper' : 'Job description';
-  $('task').value = ''; $('rubric').value = '';
+  $('task').value = ''; $('rubric').value = ''; $('bank').value = '';
+  restore();
   ['sample','learnout','queue','results'].forEach(id => $(id).innerHTML='');
   $('rulesbox').classList.add('hidden'); $('learnbtn').classList.add('hidden');
   renderDocs();
@@ -160,8 +167,8 @@ function setMode(m) {
 
 async function loadDemo() {
   const d = await api('/api/demo/' + S.mode);
-  $('task').value = d.task; $('rubric').value = d.rubric;
-  S.docs = d.documents; renderDocs();
+  $('task').value = d.task; $('rubric').value = d.rubric; $('bank').value = d.bank || '';
+  S.docs = d.documents; renderDocs(); autosave();
 }
 
 async function addTyped() {
@@ -211,7 +218,7 @@ async function uploadFiles(files) {
 }
 function removeDoc(id) { S.docs = S.docs.filter(d => d.id!==id); renderDocs(); }
 
-function docHTML(d, extra='') {
+function docHTML(d, extra='', editable=false) {
   const pills = [];
   if (d.label) pills.push(`<span class="pill">${esc(d.label)}</span>`);
   if (d.redacted) pills.push(`<span class="pill ok">${d.redacted} personal detail(s) removed</span>`);
@@ -220,11 +227,13 @@ function docHTML(d, extra='') {
   return `<div class="doc" id="doc-${d.id}">${d.image?`<img src="${d.image}" alt="scan">`:''}
     <div class="meta"><b>${esc(d.id)}</b> &middot; ${esc(d.source)} ${pills.join('')}</div>
     ${d.pending?'<span class="spinner"></span> reading handwriting...':''}${d.error?`<div class="msg bad">${esc(d.error)}</div>`:''}
-    <pre>${esc(d.text)}</pre>${extra}<div style="clear:both"></div></div>`;
+    ${editable ? `<textarea style="min-height:70px" onchange="editDoc('${d.id}', this.value)">${esc(d.text)}</textarea>
+      <button class="secondary" onclick="removeDoc('${d.id}')">Remove</button>` : `<pre>${esc(d.text)}</pre>`}${extra}<div style="clear:both"></div></div>`;
 }
+function editDoc(id, v) { const d = S.docs.find(x => x.id===id); if (d) d.text = v; }
 function renderDocs() {
   $('doccount').textContent = `Documents added: ${S.docs.length} (click to show/hide)`;
-  $('docs').innerHTML = S.docs.map(d => docHTML(d, `<button class="secondary" onclick="removeDoc('${d.id}')">Remove</button>`)).join('');
+  $('docs').innerHTML = S.docs.map(d => docHTML(d, '', true) ).join('');
 }
 
 // ---------- step 3 ----------
@@ -257,13 +266,15 @@ async function learn() {
   $('learnout').innerHTML = '<span class="spinner"></span> learning from your scores and testing itself...';
   try {
     const ex = S.sample.map(id => ({ id, text: S.docs.find(d=>d.id===id).text, score:S.reviewer[id].score, comment:S.reviewer[id].comment }));
-    const r = await api('/api/learn', { mode:S.mode, task:$('task').value, rubric:$('rubric').value, examples:ex });
+    const r = await api('/api/learn', { mode:S.mode, task:$('task').value, rubric:$('rubric').value, examples:ex, bank:$('bank').value });
     S.learned = r;
     let html = `<div class="msg ${r.decision==='ready'?'ok':'warn'}">${esc(r.message)}</div>`;
     if (r.self_test) html += '<table><tr><th>Held-out document</th><th>Your score</th><th>Agent score</th><th></th></tr>' +
       r.self_test.held_out.map(h => `<tr><td>${esc(h.id)}</td><td>${h.reviewer}</td><td>${h.agent}</td><td>${h.agree?'<span class="pill ok">agree</span>':'<span class="pill bad">differs</span>'}</td></tr>`).join('') + '</table>';
     if (r.decision!=='ready') html += `<button onclick="pickSample(2); $('learnout').innerHTML='Score the 2 new sample documents above, then click learn again.'">Add 2 more documents to my sample</button>`;
     if (r.notes) html += `<p class="hint">Agent note: ${esc(r.notes)}</p>`;
+    $('learnout').innerHTML = html;
+    html += `<button class="secondary" onclick="addRulesToBank()">Add these rules to my comment bank</button>`;
     $('learnout').innerHTML = html;
     $('rules').value = r.rules; $('approverules').checked = false;
     $('approvelabel').textContent = r.decision==='ready' ? 'I have checked these rules and approve them' : 'Continue anyway with these rules (not recommended - the agent asked for more examples)'; $('scorebtn').disabled = true;
@@ -280,25 +291,35 @@ async function scoreRest() {
   async function worker() {
     while (i < todo.length) {
       const d = todo[i++];
-      try {
-        const r = await api('/api/score', { mode:S.mode, task:$('task').value, rubric:$('rubric').value, rules, text:d.text, legibility:d.legibility||'clear' });
-        S.results[d.id] = { ...r, final:r.suggested, approved:false, opened:false };
-      } catch(e) { S.results[d.id] = { error:e.message }; }
-      renderCard(d.id); renderResults();
+      await scoreOne(d, rules);
+      if (i < todo.length) await new Promise(r => setTimeout(r, 4000));  // pause: free-tier limit
     }
   }
   await Promise.all([worker()]);   // one at a time: stays inside the free-tier rate limit
 }
+async function scoreOne(d, rules) {
+  try {
+    const r = await api('/api/score', { mode:S.mode, task:$('task').value, rubric:$('rubric').value, rules: rules ?? $('rules').value,
+                                        text:d.text, legibility:d.legibility||'clear', bank:$('bank').value });
+    S.results[d.id] = { ...r, final:r.suggested, approved:false, opened:false };
+  } catch(e) { S.results[d.id] = { error:e.message }; }
+  renderCard(d.id); renderResults();
+}
+async function retry(id) {
+  $('q-'+id).innerHTML = docHTML(S.docs.find(x => x.id===id), '<p><span class="spinner"></span> scoring 3 times...</p>');
+  await scoreOne(S.docs.find(x => x.id===id));
+}
 function renderCard(id) {
   const d = S.docs.find(x => x.id===id), r = S.results[id];
-  if (r.error) { $('q-'+id).innerHTML = docHTML(d, `<div class="msg bad">${esc(r.error)}</div>`); return; }
+  if (r.error) { $('q-'+id).innerHTML = docHTML(d, `<div class="msg bad">${esc(r.error)}</div><button onclick="retry('${id}')">Retry</button>`); return; }
   const flagged = r.flags.length > 0;
   const crit = r.criteria.map(c => `<tr><td>${esc(c.criterion)}</td><td>${c.score}/${c.max}</td><td>${esc(c.reason)}<br><i>"${esc(c.evidence)}"</i></td></tr>`).join('');
   const flagsHTML = flagged ? r.flags.map(f => `<span class="pill warn">${esc(f)}</span>`).join('') : '<span class="pill ok">stable across 3 runs</span>';
   const canApprove = !flagged || r.opened;
   $('q-'+id).innerHTML = `<div class="doc ${r.approved?'approved':''}">${d.image?`<img src="${d.image}" alt="scan">`:''}
     <div class="meta"><b>${esc(id)}</b> ${d.label?`<span class="pill">${esc(d.label)}</span>`:''} ${flagsHTML}</div>
-    <div>Agent suggests <b>${r.suggested} / ${r.max_total}</b> <span class="hint">(runs: ${r.runs.join(', ')})</span> &middot; ${esc(r.summary)}</div>
+    <div>Agent suggests <b>${r.suggested} / ${r.max_total}</b> <span class="hint">(3 separate scoring runs of the whole answer: ${r.runs.join(', ')} - same numbers = stable)</span> &middot; ${esc(r.summary)}</div>
+    ${r.feedback ? `<div class="hint" style="margin-top:4px"><b>Feedback for the student:</b> ${esc(r.feedback)}</div>` : ''}
     <details ${r.opened?'open':''} ontoggle="if(this.open){S.results['${id}'].opened=true; refreshApprove('${id}')}">
       <summary>Open: document, reasons per criterion${flagged?' (required before approval)':''}</summary>
       <pre style="margin:8px 0">${esc(d.text)}</pre><table><tr><th>Criterion</th><th>Score</th><th>Reason and evidence</th></tr>${crit}</table>
@@ -316,7 +337,7 @@ function rows() {
   const out = [];
   for (const id of S.sample) out.push({ id, source:'reviewer sample', reviewer:S.reviewer[id]?.score, runs:'', suggested:'', final:S.reviewer[id]?.score, flags:'', approved:'yes (reviewer)' });
   for (const d of S.docs) { const r = S.results[d.id]; if (!r || r.error) continue;
-    out.push({ id:d.id, source:'agent', reviewer:'', runs:r.runs.join('|'), suggested:r.suggested, final:r.final, flags:r.flags.join('; '), approved:r.approved?'yes':'no' }); }
+    out.push({ id:d.id, source:'agent', reviewer:'', runs:r.runs.join('|'), suggested:r.suggested, final:r.final, flags:r.flags.join('; '), approved:r.approved?'yes':'no', feedback:r.feedback||'' }); }
   for (const d of S.docs) if (d.route==='send_to_reviewer') out.push({ id:d.id, source:'unreadable - mark by hand', reviewer:'', runs:'', suggested:'', final:'', flags:'unreadable', approved:'no' });
   return out;
 }
@@ -324,7 +345,10 @@ function renderResults() {
   const rs = rows(); if (!rs.length) { $('results').innerHTML=''; return; }
   const agentRows = rs.filter(r => r.source==='agent'), done = agentRows.filter(r => r.approved==='yes').length;
   const changed = agentRows.filter(r => r.approved==='yes' && +r.final !== +r.suggested).length;
-  let html = `<p>${done} of ${agentRows.length} agent scores approved &middot; reviewer changed ${changed} of them &middot; AI cost so far (paid-tier price; free tier = $0): $${S.usage.cost.toFixed(4)}</p>`;
+  const appr = agentRows.filter(r => r.approved==='yes');
+  const exact = appr.filter(r => +r.final === +r.suggested).length, near = appr.filter(r => Math.abs(r.final - r.suggested) <= 1).length;
+  let html = appr.length ? `<div class="msg ok"><b>Accuracy on unseen documents (agent vs. your approved mark):</b> exact match ${exact}/${appr.length} (${Math.round(100*exact/appr.length)}%) &middot; within 1 mark ${near}/${appr.length} (${Math.round(100*near/appr.length)}%)</div>` : '';
+  html += `<p>${done} of ${agentRows.length} agent scores approved &middot; reviewer changed ${changed} of them &middot; AI cost so far (paid-tier price; free tier = $0): $${S.usage.cost.toFixed(4)}</p>`;
   html += '<table><tr><th>ID</th><th>Source</th><th>Agent (3 runs)</th><th>Final</th><th>Approved</th><th>Flags</th></tr>' +
     rs.map(r => `<tr><td>${esc(r.id)}</td><td>${esc(r.source)}</td><td>${esc(r.runs)}</td><td>${esc(r.final)}</td><td>${esc(r.approved)}</td><td>${esc(r.flags)}</td></tr>`).join('') + '</table>';
   if (S.mode==='resume') {
@@ -340,6 +364,32 @@ function downloadCSV() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
   a.download = `results_${S.mode}.csv`; a.click();
 }
+
+// ---------- comment bank, save / load ----------
+function addRulesToBank() {
+  const b = $('bank'); b.value = (b.value.trim() + '\n\nLearned from my sample (approved):\n' + $('rules').value).trim(); autosave();
+}
+function setupData() { return { mode:S.mode, task:$('task').value, rubric:$('rubric').value, bank:$('bank').value, rules:$('rules').value }; }
+function saveSetup() {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(setupData(), null, 2)], {type:'application/json'}));
+  a.download = `setup_${S.mode}.json`; a.click();
+}
+async function loadSetup(file) {
+  if (!file) return;
+  const d = JSON.parse(await file.text());
+  if (d.mode && d.mode !== S.mode) setMode(d.mode);
+  $('task').value = d.task||''; $('rubric').value = d.rubric||''; $('bank').value = d.bank||''; $('rules').value = d.rules||'';
+  autosave();
+}
+// remember task / rubric / comment bank in this browser (convenience only)
+function autosave() { try { localStorage.setItem('setup_'+S.mode, JSON.stringify(setupData())); } catch(e) {} }
+function restore() {
+  try { const d = JSON.parse(localStorage.getItem('setup_'+S.mode) || 'null');
+        if (d) { $('task').value = d.task||''; $('rubric').value = d.rubric||''; $('bank').value = d.bank||''; } } catch(e) {}
+}
+['task','rubric','bank'].forEach(id => $(id).addEventListener('change', autosave));
+restore();
 
 fetch('/api/health').then(r => r.json()).then(h => {
   $('health').textContent = h.key_set ? `Connected to ${h.provider} (${h.model})${h.mock?' - MOCK MODE':''}` : 'AI key is not set on the server yet (add GEMINI_API_KEY in Vercel settings).';

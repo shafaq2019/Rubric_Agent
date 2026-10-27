@@ -13,7 +13,8 @@ SCORE = """You are an assistant assessor. You score ONE document against a rubri
 A human reviewer will check and approve your score, so be honest and precise.
 
 Fixed rules (always apply):
-- Score ONLY against the rubric criteria and the approved Do's and Don'ts.
+- Score ONLY against the rubric criteria, the reviewer's comment bank, and the approved Do's and Don'ts.
+- The comment bank describes what earns or loses marks. Follow it closely, and reuse its wording in your feedback.
 - Do not reward length, fancy words or keywords. Reward correct ideas and real evidence.
 - Ignore spelling and grammar unless the rubric says to mark them. Weak English with a correct idea earns full credit for that idea.
 - An answer that only repeats the question, or answers a different question, gets 0 for the criteria it does not meet.
@@ -22,15 +23,17 @@ Fixed rules (always apply):
 
 Reply with JSON only, in this shape:
 {"criteria": [{"criterion": "<name>", "score": <number>, "max": <number>, "evidence": "<short quote from the document>", "reason": "<one sentence>"}],
- "total": <number>, "max_total": <number>, "summary": "<one sentence>"}"""
+ "total": <number>, "max_total": <number>, "summary": "<one sentence>",
+ "feedback": "<2-3 sentences of feedback for the student or candidate, reusing comment-bank wording where it fits>"}
+Make sure the JSON is valid: escape any double quotes inside text values."""
 
 
 LEARN = """You help a reviewer turn her scoring into clear written rules.
-You will see a rubric and some documents that SHE has already scored, with her comments.
+You will see a rubric, her comment bank (her standard comments), and some documents that SHE has already scored, with her comments.
 Write Do's and Don'ts that explain how she applies the rubric, so another assessor would give the same scores.
 
 Rules:
-- Every rule must come from her scores or comments on these examples. Do not invent new standards.
+- Every rule must come from her scores, her comments on these examples, or her comment bank. Do not invent new standards.
 - Never write rules about handwriting neatness, names, gender, age, religion, or which university someone attended.
 - Keep each rule short and specific (one sentence).
 - Write at most 6 Do's and 6 Don'ts.
@@ -39,18 +42,19 @@ Reply with JSON only, in this shape:
 {"dos": ["..."], "donts": ["..."], "notes": "<one sentence on anything unclear in her scoring>"}"""
 
 
-def score_user_message(mode: str, task: str, rubric: str, rules: str, document: str) -> str:
+def score_user_message(mode: str, task: str, rubric: str, rules: str, document: str, bank: str = "") -> str:
     kind = "student's answer" if mode == "exam" else "candidate's resume"
     return (
         f"TASK ({'question paper' if mode == 'exam' else 'job description'}):\n{task}\n\n"
         f"RUBRIC:\n{rubric}\n\n"
+        f"REVIEWER'S COMMENT BANK:\n{bank or '(none)'}\n\n"
         f"APPROVED DO'S AND DON'TS FROM THE REVIEWER:\n{rules or '(none yet)'}\n\n"
         f"THE {kind.upper()} TO SCORE:\n<<<\n{document}\n>>>"
     )
 
 
-def learn_user_message(mode: str, task: str, rubric: str, examples: list) -> str:
-    parts = [f"TASK:\n{task}\n\nRUBRIC:\n{rubric}\n\nDOCUMENTS SCORED BY THE REVIEWER:"]
+def learn_user_message(mode: str, task: str, rubric: str, examples: list, bank: str = "") -> str:
+    parts = [f"TASK:\n{task}\n\nRUBRIC:\n{rubric}\n\nREVIEWER'S COMMENT BANK:\n{bank or '(none)'}\n\nDOCUMENTS SCORED BY THE REVIEWER:"]
     for i, ex in enumerate(examples, 1):
         parts.append(
             f"\n--- Example {i} ---\n{ex['text']}\nREVIEWER SCORE: {ex['score']}\n"

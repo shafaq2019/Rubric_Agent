@@ -1,6 +1,35 @@
 """Small SYNTHETIC demo sets so anyone can try the app. No real student or applicant data.
 Shafaq's own larger synthetic sets (incl. scanned handwriting) are used in the notebook."""
 
+EXAM_BANK = """C1 - Explaining the stage (0-2)
++ 2 marks: gives the age range (about 7-11) AND says children think logically about concrete/real objects AND names at least one key idea (conservation, reversibility, classification, seriation).
++ 1 mark: only one or two of these (e.g. age + "logical", but no concrete objects or key idea).
+- 0 marks: describes a different stage (e.g. abstract/hypothetical thinking = formal operational), or only says who Piaget was.
+- Common mistake: mixing up concrete operational with formal operational (abstract thinking, adolescence). This earns 0 for C1 even if the answer is long.
+
+C2 - Two classroom applications (0-2, 1 each)
++ 1 mark each: a specific activity using hands-on or real objects (counters, base-ten blocks, sorting leaves, water jugs for conservation, class shop with play money).
+- No mark: vague advice ("use activities", "give examples", "use charts because children like colours") with no link to concrete thinking.
+- No mark: an activity that fits another theory (e.g. scaffolding/ZPD from Vygotsky) unless it is tied to concrete objects.
+
+C3 - Link to Grade 3 (0-1)
++ 1 mark: says why it suits Grade 3 / age 8-9 children (they learn best with concrete, hands-on materials).
+- No mark: Grade 3 only mentioned in passing, or the reason is unrelated to the stage.
+
+General
+- Do not reward length or big words. Short, correct answers can earn full marks.
+- Ignore spelling and grammar. Weak English with correct ideas earns full credit.
+- An answer that only repeats the question earns 0.
+- An answer about a different theory (e.g. Vygotsky only) earns 0.
+
+Standard feedback comments
+- "Good: you linked the stage to hands-on classroom activities."
+- "Add the age range and one key idea such as conservation."
+- "Your activities need to use real or concrete objects to fit this stage."
+- "Explain why this suits Grade 3 children (age 8-9)."
+- "This describes abstract thinking, which belongs to the formal operational stage."
+"""
+
 EXAM = {
     "task": ("Course: Child Development (B.Ed)\n"
              "Q1. Explain Piaget's concrete operational stage and give TWO ways a Grade 3 teacher "
@@ -10,6 +39,7 @@ EXAM = {
                "C2. Two valid classroom applications that fit this stage, 1 mark each. (0-2 marks)\n"
                "C3. Applications clearly linked to Grade 3 children (age 8-9). (0-1 mark)\n"
                "Total: 5 marks"),
+    "bank": EXAM_BANK,
     "documents": [
         {"id": "S01", "label": "strong", "text": "Concrete operational stage is the third stage of Piaget, from about 7 to 11 years. Children can think logically but only about real, concrete things they can see or touch. They understand conservation, for example the water is same even in a tall glass, and reversibility and classification. A Grade 3 teacher can use counters and blocks to teach addition and subtraction so children see it physically. Second, she can do sorting activities, like sorting leaves by shape and size in science. Grade 3 children are 8 years old so hands-on objects suit them."},
         {"id": "S02", "label": "good", "text": "In this stage (7-11 years) child thinks logically about concrete objects. Child understands conservation of number and volume. Teacher can use real objects like beads for maths. Teacher can also do group activities where children classify animals into groups."},
@@ -28,6 +58,36 @@ EXAM = {
     ],
 }
 
+RESUME_BANK = """R1 - SQL (0-3)
++ 3: wrote queries in real work or an internship (pulled reports, joins, aggregations).
++ 2: SQL in a substantial project with a clear result.
++ 1: coursework or certificate only.
+- 0: SQL only listed as a skill with no evidence.
+
+R2 - Analysis with Excel or Python (0-3)
++ 3: regular real analysis (pivot tables, pandas, cleaning data) at work.
++ 2: a project with a clear question and finding.
++ 1: basic use only.
+
+R3 - Dashboards / visualisation (0-2)
++ 2: built a dashboard or chart report that someone used.
++ 1: made charts in a course project.
+
+R4 - Communication (0-2)
++ 2: presented or wrote up findings for managers or a team.
++ 1: some evidence (class report).
+
+General
+- A long skills list without evidence (keyword stuffing) earns little.
+- Plain wording with real evidence can earn full marks.
+- Ignore name, gender, marital status, age, photo and university name.
+
+Standard feedback comments
+- "Strong practical evidence of SQL and reporting."
+- "Skills are listed but not shown in any project or job."
+- "Add one example of a dashboard or report you built and who used it."
+"""
+
 RESUME = {
     "task": ("Job: Junior Data Analyst (entry level), Karachi.\n"
              "Needs: SQL for querying data; Excel or Python for analysis; dashboards (Power BI/Tableau); "
@@ -37,6 +97,7 @@ RESUME = {
                "R3. Dashboards / visualisation - built at least one dashboard or report. (0-2)\n"
                "R4. Communication - presented or wrote up findings for others. (0-2)\n"
                "Total: 10 points. Score evidence, not keywords."),
+    "bank": RESUME_BANK,
     "documents": [
         {"id": "R01", "label": "strong", "text": "Name: Sana Iqbal\nEmail: sana.iqbal@example.com\nBS Statistics, University of Karachi (2025)\nInternship - Data Intern, FMCG distributor (6 months): wrote SQL queries in PostgreSQL to pull weekly sales by region; built a Power BI dashboard used by the sales manager; cleaned 50k rows in Excel with Power Query.\nProject: Python (pandas) analysis of Karachi rainfall vs. delivery delays; presented results to the operations team.\nSkills: SQL, Excel, Python, Power BI"},
         {"id": "R02", "label": "trap: keyword stuffed", "text": "Name: Bilal Ahmed\nPhone: 0300-1234567\nSKILLS: SQL, MySQL, PostgreSQL, NoSQL, Python, R, Excel, VBA, Power BI, Tableau, Looker, Big Data, Hadoop, Spark, Machine Learning, Deep Learning, AI, NLP, Data Mining, Data Warehousing, ETL, Statistics, Communication, Leadership, Teamwork\nEducation: BBA (2024)\nExperience: Sales associate, mobile phone shop (1 year)."},
